@@ -10,22 +10,12 @@ import (
 )
 
 type Session struct {
-	Token      string
-	Self       *SelfResource
-	Team       *TeamResource
-	Users      []UserResource
-	UserMap    map[string]UserResource
-	Channels   []ChannelResource
-	ChannelMap map[string]ChannelResource
-	Events     chan Event
-}
-
-func (s *Session) Channel(id string) *ChannelResource {
-	c := s.ChannelMap[id]
-	if c.Id == "" {
-		c = ChannelResource{Id: id, Name: fmt.Sprintf("(id:%s)", c.Id)}
-	}
-	return &c
+	Token   string
+	Self    *SelfResource
+	Team    *TeamResource
+	Users   []UserResource
+	UserMap map[string]UserResource
+	Events  chan Event
 }
 
 func (s *Session) User(id string) *UserResource {
@@ -37,12 +27,11 @@ func (s *Session) User(id string) *UserResource {
 }
 
 type RtmStartResponse struct {
-	Ok       bool              `json:"ok"`
-	Url      string            `json:"url"`
-	Self     *SelfResource     `json:"self"`
-	Team     *TeamResource     `json:"team"`
-	Users    []UserResource    `json:"users"`
-	Channels []ChannelResource `json:"channels"`
+	Ok    bool           `json:"ok"`
+	Url   string         `json:"url"`
+	Self  *SelfResource  `json:"self"`
+	Team  *TeamResource  `json:"team"`
+	Users []UserResource `json:"users"`
 }
 
 type SelfResource struct {
@@ -62,15 +51,6 @@ type UserResource struct {
 	Name string `json:"name"`
 }
 
-type ChannelResource struct {
-	Id         string   `json:"id"`
-	Name       string   `json:"name"`
-	IsArchived bool     `json:"is_archived"`
-	IsGeneral  bool     `json:"is_general"`
-	Members    []string `json:"members"`
-	IsMember   bool     `json:"is_member"`
-}
-
 type Event map[string]interface{}
 
 func Connect(token string) (*Session, error) {
@@ -80,16 +60,14 @@ func Connect(token string) (*Session, error) {
 	}
 
 	session := &Session{
-		Token:    token,
-		Self:     resp.Self,
-		Team:     resp.Team,
-		Users:    resp.Users,
-		Channels: resp.Channels,
-		Events:   make(chan Event),
+		Token:  token,
+		Self:   resp.Self,
+		Team:   resp.Team,
+		Users:  resp.Users,
+		Events: make(chan Event),
 	}
 
 	mapUsers(session)
-	mapChannels(session)
 
 	conn, _, err := websocket.DefaultDialer.Dial(resp.Url, nil)
 	if err != nil {
@@ -137,13 +115,6 @@ func rtmInit(token string) (resp *RtmStartResponse, err error) {
 func rtmUrl(token string) string {
 	var rtmUrl = "https://slack.com/api/rtm.start"
 	return fmt.Sprintf("%s?token=%s", rtmUrl, token)
-}
-
-func mapChannels(s *Session) {
-	s.ChannelMap = make(map[string]ChannelResource)
-	for _, c := range s.Channels {
-		s.ChannelMap[c.Id] = c
-	}
 }
 
 func mapUsers(s *Session) {
