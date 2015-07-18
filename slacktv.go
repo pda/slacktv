@@ -3,14 +3,19 @@ package slacktv
 import (
 	"fmt"
 	"os"
-	"strings"
-
-	"github.com/gorilla/websocket"
+	"regexp"
 )
 
 func Run() {
-	client := &SlackClient{Token: mustGetToken()}
-	rtm(client)
+	token := mustGetToken()
+	sess, err := Connect(token)
+	if err != nil {
+		panic(err)
+	}
+
+	for event := range sess.Events {
+		handleEvent(sess, event)
+	}
 }
 
 func mustGetToken() string {
@@ -21,36 +26,27 @@ func mustGetToken() string {
 	return token
 }
 
-func rtm(client *SlackClient) {
-	resp, err := client.RtmStart()
-	if err != nil {
-		panic(err)
+func handleEvent(s *Session, ev Event) {
+	if ev["type"] == "message" {
+		handleMessage(s, ev)
+	}
+}
+
+func handleMessage(s *Session, ev Event) {
+	if ev["user"] == nil || ev["text"] == nil || ev["channel"] == nil {
+		return
 	}
 
-	var chanNames []string
-	for _, c := range resp.Channels {
-		if c.IsMember {
-			chanNames = append(chanNames, fmt.Sprintf("#%s", c.Name))
-		}
+	user := s.User(ev["user"].(string))
+	channel := s.Channel(ev["channel"].(string))
+	text := ev["text"].(string)
+
+	fmt.Printf("#%s | <%s> %s\n", channel.Name, user.Name, text)
+
+	re := regexp.MustCompile(`\A\s*<@(.+?)>.*<(.+?)>`)
+	sm := re.FindSubmatch([]byte(text))
+	if sm != nil && string(sm[1]) == s.Self.Id {
+		url := sm[2]
+		fmt.Printf("-- URL from %s: %s\n", user.Name, url)
 	}
-
-	fmt.Printf("Self: %#v\n", resp.Self)
-	fmt.Printf("Team: %#v\n", resp.Team)
-	fmt.Printf("Channels: %s", strings.Join(chanNames, " "))
-	fmt.Println()
-
-	conn, wsResp, err := websocket.DefaultDialer.Dial(resp.Url, nil)
-	if err != nil {
-		panic(err)
-	}
-	_ = wsResp
-
-	for {
-		messageType, p, err := conn.ReadMessage()
-		if err != nil {
-			return
-		}
-		fmt.Println(messageType, string(p))
-	}
-
 }
