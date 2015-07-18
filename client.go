@@ -11,36 +11,6 @@ type SlackClient struct {
 	Token string
 }
 
-func (*SlackClient) AuthTest() (resp AuthTestResponse, err error) {
-	url := authUrl(mustGetToken())
-	httpResp, err := http.Get(url)
-	if err != nil {
-		return
-	}
-	defer httpResp.Body.Close()
-	body, err := ioutil.ReadAll(httpResp.Body)
-	if err != nil {
-		return
-	}
-
-	err = json.Unmarshal(body, &resp)
-	if err != nil {
-		return
-	}
-
-	return
-}
-
-func authUrl(token string) string {
-	var authUrl = "https://slack.com/api/auth.test"
-	return fmt.Sprintf("%s?token=%s", authUrl, token)
-}
-
-type AuthTestResponse struct {
-	Ok    bool
-	Error string
-}
-
 func (*SlackClient) RtmStart() (resp RtmStartResponse, err error) {
 	url := rtmUrl(mustGetToken())
 	httpResp, err := http.Get(url)

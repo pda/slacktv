@@ -10,7 +10,6 @@ import (
 
 func Run() {
 	client := &SlackClient{Token: mustGetToken()}
-	testAuth(client)
 	rtm(client)
 }
 
@@ -20,19 +19,6 @@ func mustGetToken() string {
 		panic("mustGetToken() requires AUTH_TOKEN")
 	}
 	return token
-}
-
-func testAuth(client *SlackClient) {
-	resp, err := client.AuthTest()
-	if err != nil {
-		panic(err)
-	}
-
-	if resp.Ok {
-		fmt.Println("authentication successful")
-	} else {
-		fmt.Println("authentication failed:", resp.Error)
-	}
 }
 
 func rtm(client *SlackClient) {
