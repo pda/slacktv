@@ -67,13 +67,16 @@ func Connect(token string) (*Session, error) {
 		Events: make(chan Event),
 	}
 
+	dbg("mapping %d users", len(session.Users))
 	mapUsers(session)
 
+	dbg("connecting to %s", resp.Url)
 	conn, _, err := websocket.DefaultDialer.Dial(resp.Url, nil)
 	if err != nil {
 		return nil, err
 	}
 
+	dbg("reading websocket messages in goroutine")
 	go func() {
 		for {
 			messageType, p, err := conn.ReadMessage()
@@ -95,6 +98,7 @@ func Connect(token string) (*Session, error) {
 }
 
 func rtmInit(token string) (resp *RtmStartResponse, err error) {
+	dbg("rtm.start")
 	url := rtmUrl(token)
 	httpResp, err := http.Get(url)
 	if err != nil {
@@ -109,6 +113,7 @@ func rtmInit(token string) (resp *RtmStartResponse, err error) {
 	if err != nil {
 		return
 	}
+	dbg("rtm.start ok:%v name:%s team:%s", resp.Ok, resp.Self.Name, resp.Team.Name)
 	return
 }
 

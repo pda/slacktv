@@ -2,14 +2,15 @@ package slacktv
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"os/exec"
 	"regexp"
 )
 
 func Run() {
+	dbg("reading AUTH_TOKEN from environment")
 	token := mustGetToken()
+	dbg("initializing RTM websocket")
 	sess, err := Connect(token)
 	if err != nil {
 		panic(err)
@@ -19,6 +20,7 @@ func Run() {
 	go func() {
 		for {
 			url := <-browser
+			dbg("opening %s", url)
 			cmdStdout := &bytes.Buffer{}
 			cmdStderr := &bytes.Buffer{}
 			cmd := exec.Command("/usr/bin/open", "-n", "-a", "Google Chrome", "--args", "--kiosk", url)
@@ -30,11 +32,12 @@ func Run() {
 			}
 			err = cmd.Wait()
 			if err != nil {
-				fmt.Printf("exit: %#v\nstdout: %s\nstderr: %s\n", err, cmdStdout, cmdStderr)
+				dbg("cmd exit: %#v\nstdout: %s\nstderr: %s", err, cmdStdout, cmdStderr)
 			}
 		}
 	}()
 
+	dbg("listening for events")
 	for event := range sess.Events {
 		handleEvent(sess, event, browser)
 	}
@@ -49,6 +52,7 @@ func mustGetToken() string {
 }
 
 func handleEvent(s *Session, ev Event, browser chan string) {
+	dbg("event: %#v", ev)
 	switch ev["type"] {
 	case "message":
 		handleMessage(s, ev, browser)
@@ -67,7 +71,7 @@ func handleMessage(s *Session, ev Event, browser chan string) {
 	sm := re.FindSubmatch([]byte(text))
 	if sm != nil && string(sm[1]) == s.Self.Id {
 		url := string(sm[2])
-		fmt.Printf("-- URL from %s: %s\n", user.Name, url)
+		dbg("-- URL from %s: %s", user.Name, url)
 		browser <- url
 	}
 }
