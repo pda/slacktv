@@ -2,16 +2,15 @@ package slacktv
 
 import (
 	"bytes"
-	"os"
 	"os/exec"
 	"regexp"
+
+	"github.com/pda/slacktv/slack"
 )
 
 func Run() {
-	dbg("reading AUTH_TOKEN from environment")
-	token := mustGetToken()
-	dbg("initializing RTM websocket")
-	sess, err := Connect(token)
+	dbg("initializing RTM session")
+	rtm, err := slack.RTMStart()
 	if err != nil {
 		panic(err)
 	}
@@ -38,38 +37,30 @@ func Run() {
 	}()
 
 	dbg("listening for events")
-	for event := range sess.Events {
-		handleEvent(sess, event, browser)
+	for ev := range rtm.Events {
+		handleEvent(rtm, ev, browser)
 	}
 }
 
-func mustGetToken() string {
-	token := os.Getenv("AUTH_TOKEN")
-	if token == "" {
-		panic("mustGetToken() requires AUTH_TOKEN")
-	}
-	return token
-}
-
-func handleEvent(s *Session, ev Event, browser chan string) {
+func handleEvent(rtm *slack.RTMSession, ev slack.Event, browser chan string) {
 	dbg("event: %#v", ev)
 	switch ev["type"] {
 	case "message":
-		handleMessage(s, ev, browser)
+		handleMessage(rtm, ev, browser)
 	}
 }
 
-func handleMessage(s *Session, ev Event, browser chan string) {
+func handleMessage(rtm *slack.RTMSession, ev slack.Event, browser chan string) {
 	if ev["user"] == nil || ev["text"] == nil {
 		return
 	}
 
-	user := s.User(ev["user"].(string))
+	user := rtm.User(ev["user"].(string))
 	text := ev["text"].(string)
 
 	re := regexp.MustCompile(`\A\s*<@(.+?)>.*<(.+?)>`)
 	sm := re.FindSubmatch([]byte(text))
-	if sm != nil && string(sm[1]) == s.Self.Id {
+	if sm != nil && string(sm[1]) == rtm.Self.Id {
 		url := string(sm[2])
 		dbg("-- URL from %s: %s", user.Name, url)
 		browser <- url

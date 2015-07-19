@@ -14,12 +14,13 @@ type Response struct {
 	Ok bool
 }
 
-type RtmStartResponse struct {
-	Ok    bool           `json:"ok"`
-	Url   string         `json:"url"`
-	Self  *SelfResource  `json:"self"`
-	Team  *TeamResource  `json:"team"`
-	Users []UserResource `json:"users"`
+type RTMStartResponse struct {
+	Ok    bool
+	Error string
+	Url   string
+	Self  *SelfResource
+	Team  *TeamResource
+	Users []UserResource
 }
 
 type SelfResource struct {

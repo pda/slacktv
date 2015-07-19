@@ -1,10 +1,10 @@
 package slack_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"testing"
 
@@ -17,29 +17,27 @@ func TestMain(m *testing.M) {
 }
 
 func TestMethod(t *testing.T) {
-	call, err := slack.Method("channel.join", slack.Data{"name": "test"})
+	call, err := slack.Method("channel.join", url.Values{"name": {"test"}})
 
 	if err != nil {
 		t.Error(err)
 	}
 	if call.Url != "https://slack.com/api/channel.join" {
-		t.Fail()
+		t.Error(call.Url)
 	}
-	if call.ContentType != "application/json" {
-		t.Fail()
+	if call.Data.Get("token") != "secret" {
+		t.Errorf("%#v", call.Data)
 	}
-	var d slack.Data
-	err = json.Unmarshal(call.Body, &d)
-	if d["token"] != "secret" {
-		t.Fail()
-	}
-	if d["name"] != "test" {
-		t.Fail()
+	if call.Data.Get("name") != "test" {
+		t.Errorf("%#v", call.Data)
 	}
 }
 
 func TestApiCall(t *testing.T) {
+	var req *http.Request
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		req = r
 		fmt.Fprintln(w, `{"ok": true, "channel": {"id": "xyz", "name": "test"}}`)
 	}))
 	defer ts.Close()
@@ -48,7 +46,7 @@ func TestApiCall(t *testing.T) {
 	os.Setenv("SLACK_URL", ts.URL)
 	defer os.Setenv("SLACK_URL", oldUrl)
 
-	call, err := slack.Method("channel.join", slack.Data{"name": "test"})
+	call, err := slack.Method("channel.join", url.Values{"name": {"test"}})
 	if err != nil {
 		t.Error(err)
 	}
@@ -57,12 +55,17 @@ func TestApiCall(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	if resp.Ok != true {
-		t.Logf("resp: %#v", resp)
-		t.Fail()
+
+	ct := req.Header.Get("Content-Type")
+	if ct != "application/x-www-form-urlencoded" {
+		t.Error(`Content-Type:`, ct)
 	}
+
+	if resp.Ok != true {
+		t.Errorf("resp: %#v", resp)
+	}
+
 	if resp.Channel.Name != "test" || resp.Channel.Id != "xyz" {
-		t.Logf(`resp.Channel: %#v`, resp.Channel)
-		t.Fail()
+		t.Errorf(`resp.Channel: %#v`, resp.Channel)
 	}
 }

@@ -1,24 +1,21 @@
 package slack
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 )
 
 type MethodCall struct {
-	Url         string
-	ContentType string
-	Body        []byte
+	Url  string
+	Data url.Values
 }
 
-type Data map[string]interface{}
-
 func (m *MethodCall) Exec(resp interface{}) (err error) {
-	httpResp, err := http.Post(m.Url, m.ContentType, bytes.NewReader(m.Body))
+	httpResp, err := http.PostForm(m.Url, m.Data)
 	if err != nil {
 		return
 	}
@@ -34,7 +31,7 @@ func (m *MethodCall) Exec(resp interface{}) (err error) {
 	return
 }
 
-func url(method string) string {
+func apiUrl(method string) string {
 	base := os.Getenv("SLACK_URL")
 	if base == "" {
 		base = "https://slack.com/api"
@@ -42,16 +39,11 @@ func url(method string) string {
 	return fmt.Sprint(base, "/", method)
 }
 
-func Method(name string, d Data) (mc *MethodCall, err error) {
-	d["token"] = mustGetToken()
-	json, err := json.Marshal(d)
-	if err != nil {
-		return
-	}
+func Method(name string, d url.Values) (mc *MethodCall, err error) {
+	d.Set("token", mustGetToken())
 	mc = &MethodCall{
-		Url:         url(name),
-		ContentType: "application/json",
-		Body:        json,
+		Url:  apiUrl(name),
+		Data: d,
 	}
 	return
 }
