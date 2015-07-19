@@ -1,8 +1,7 @@
 package slacktv
 
 import (
-	"bytes"
-	"os/exec"
+	"log"
 	"regexp"
 
 	"github.com/pda/slacktv/slack"
@@ -15,42 +14,21 @@ func Run() {
 		panic(err)
 	}
 
-	browser := make(chan string)
-	go func() {
-		for {
-			url := <-browser
-			dbg("opening %s", url)
-			cmdStdout := &bytes.Buffer{}
-			cmdStderr := &bytes.Buffer{}
-			cmd := exec.Command("/usr/bin/open", "-n", "-a", "Google Chrome", "--args", "--kiosk", url)
-			cmd.Stdout = cmdStdout
-			cmd.Stderr = cmdStderr
-			err = cmd.Start()
-			if err != nil {
-				panic(err)
-			}
-			err = cmd.Wait()
-			if err != nil {
-				dbg("cmd exit: %#v\nstdout: %s\nstderr: %s", err, cmdStdout, cmdStderr)
-			}
-		}
-	}()
-
 	dbg("listening for events")
 	for ev := range rtm.Events {
-		handleEvent(rtm, ev, browser)
+		handleEvent(rtm, ev)
 	}
 }
 
-func handleEvent(rtm *slack.RTMSession, ev slack.Event, browser chan string) {
+func handleEvent(rtm *slack.RTMSession, ev slack.Event) {
 	dbg("event: %#v", ev)
 	switch ev["type"] {
 	case "message":
-		handleMessage(rtm, ev, browser)
+		handleMessage(rtm, ev)
 	}
 }
 
-func handleMessage(rtm *slack.RTMSession, ev slack.Event, browser chan string) {
+func handleMessage(rtm *slack.RTMSession, ev slack.Event) {
 	if ev["user"] == nil || ev["text"] == nil {
 		return
 	}
@@ -62,7 +40,10 @@ func handleMessage(rtm *slack.RTMSession, ev slack.Event, browser chan string) {
 	sm := re.FindSubmatch([]byte(text))
 	if sm != nil && string(sm[1]) == rtm.Self.Id {
 		url := string(sm[2])
-		dbg("-- URL from %s: %s", user.Name, url)
-		browser <- url
+		dbg("URL from %s: %s", user.Name, url)
+		err := open(url)
+		if err != nil {
+			log.Print(err)
+		}
 	}
 }
