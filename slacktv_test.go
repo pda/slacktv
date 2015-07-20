@@ -2,21 +2,23 @@ package slacktv
 
 import "testing"
 
-func TestIsMentionSingleMention(t *testing.T) {
-	if !isMention("<@U02QFPOAN> hi", "U02QFPOAN") {
-		t.Fail()
+func TestIsMention(t *testing.T) {
+	type expectation struct {
+		text   string
+		userId string
+		result bool
 	}
-}
 
-func TestIsMentionMultipleMentions(t *testing.T) {
-	if !isMention("ping <@U02QFPOAN> <@U05JWPFMA>", "U02QFPOAN") {
-		t.Fail()
+	table := []expectation{
+		{text: "<@U02QFPOAN> hi", userId: "U02QFPOAN", result: true},
+		{text: "ping <@U02QFPOAN> <@U05JWPFMA>", userId: "U02QFPOAN", result: true},
+		{text: "ping <@U08PQHGUD> <@U05JWPFMA>", userId: "U02QFPOAN", result: false},
 	}
-}
 
-func TestIsMentionNope(t *testing.T) {
-	if isMention("ping <@U08PQHGUD> <@U05JWPFMA>", "U02QFPOAN") {
-		t.Fail()
+	for _, exp := range table {
+		if isMention(exp.text, exp.userId) != exp.result {
+			t.Errorf("%#v", exp)
+		}
 	}
 }
 
