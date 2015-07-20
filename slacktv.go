@@ -1,11 +1,19 @@
 package slacktv
 
 import (
+	"fmt"
 	"log"
 	"regexp"
+	"strings"
 
 	"github.com/pda/slacktv/slack"
 )
+
+var urlRegexp *regexp.Regexp
+
+func init() {
+	urlRegexp = regexp.MustCompile(`<(https?://.+?)>`)
+}
 
 func Run() {
 	dbg("initializing RTM session")
@@ -36,14 +44,25 @@ func handleMessage(rtm *slack.RTMSession, ev slack.Event) {
 	user := rtm.User(ev["user"].(string))
 	text := ev["text"].(string)
 
-	re := regexp.MustCompile(`\A\s*<@(.+?)>.*<(.+?)>`)
-	sm := re.FindSubmatch([]byte(text))
-	if sm != nil && string(sm[1]) == rtm.Self.Id {
-		url := string(sm[2])
-		dbg("URL from %s: %s", user.Name, url)
-		err := open(url)
-		if err != nil {
-			log.Print(err)
+	if isMention(text, rtm.Self.Id) {
+		if url, ok := urlFromMessageText(text); ok {
+			dbg("URL from %s: %s", user.Name, url)
+			err := open(url)
+			if err != nil {
+				log.Print(err)
+			}
 		}
 	}
+}
+
+func isMention(text, userId string) bool {
+	return strings.Contains(text, fmt.Sprintf("<@%s>", userId))
+}
+
+func urlFromMessageText(text string) (string, bool) {
+	m := urlRegexp.FindSubmatch([]byte(text))
+	if m == nil {
+		return "", false
+	}
+	return string(m[1]), true
 }
