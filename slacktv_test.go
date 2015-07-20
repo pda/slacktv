@@ -49,3 +49,18 @@ func TestUrlFromText(t *testing.T) {
 	}
 
 }
+
+func TestIsGreeting(t *testing.T) {
+	table := map[string]bool{
+		"nope":                false,
+		"hello":               true,
+		"<@FOO>: hello":       true,
+		"<@FOO>: hello world": true,
+		"<hello>: foo":        false,
+	}
+	for text, result := range table {
+		if isGreeting(text) != result {
+			t.Errorf("isGreeting(%#v) should have been %#v", text, result)
+		}
+	}
+}

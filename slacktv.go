@@ -9,10 +9,14 @@ import (
 	"github.com/pda/slacktv/slack"
 )
 
-var urlRegexp *regexp.Regexp
+var (
+	urlRegexp *regexp.Regexp
+	tagRegexp *regexp.Regexp
+)
 
 func init() {
 	urlRegexp = regexp.MustCompile(`<(https?://.+?)>`)
+	tagRegexp = regexp.MustCompile(`<.*?>`)
 }
 
 func Run() {
@@ -65,4 +69,9 @@ func urlFromMessageText(text string) (string, bool) {
 		return "", false
 	}
 	return string(m[1]), true
+}
+
+func isGreeting(text string) bool {
+	stripped := tagRegexp.ReplaceAllString(text, "")
+	return strings.Contains(stripped, "hello")
 }
